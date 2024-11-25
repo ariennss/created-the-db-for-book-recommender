@@ -3,7 +3,7 @@ using System.Data.Entity.Core.Objects.DataClasses;
 using System.Data.SQLite;
 using System.Text;
 using System.Text.Json;
-
+//TODO: remove records nella table book_genres dove book_id non presente nella tabella Books
 internal class Program
 {
     // inserimento reviews funziona fino alla sb ma poi dice che non soddisfa il requisito di chiave.
@@ -40,18 +40,25 @@ internal class Program
             //    )";
 
             //Create table for reviews
-            command.CommandText = @" CREATE TABLE IF NOT EXISTS Reviews (
-                    review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            //command.CommandText = @" CREATE TABLE IF NOT EXISTS Reviews (
+            //        review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            //        book_id INTEGER,
+            //        user_id TEXT,
+            //        rating INTEGER,
+            //        lcv INTEGER DEFAULT 0
+            //    )";
+
+            command.CommandText = @" CREATE TABLE IF NOT EXISTS Book_Genres (
+                    relation_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     book_id INTEGER,
-                    user_id TEXT,
-                    rating INTEGER,
+                    genre TEXT,  
                     lcv INTEGER DEFAULT 0
                 )";
             // Insert data
 
             command.ExecuteNonQuery();
 
-            string filePath = "C:\\Downloads\\reviews.json";
+            string filePath = "C:\\dataset tesi\\goodreads_book_genres_initial.json";
 
             try
             {
@@ -60,10 +67,10 @@ internal class Program
                     string line;
 
 
-                    int batchSize = 1000000;
+                    //int batchSize = 1000000;
                     int counter = 0;
                     StringBuilder sb = new StringBuilder();
-                    sb.AppendLine(@"INSERT INTO Reviews(book_id, user_id, rating) VALUES ");
+                    sb.AppendLine(@"INSERT INTO Book_Genres(book_id, genre) VALUES ");
                     while ((line = sr.ReadLine()) != null)
                     {
                         
@@ -86,6 +93,13 @@ internal class Program
                         }
 
                         JObject jsonLine = JObject.Parse(line);
+                        var book_id = jsonLine["book_id"];
+                        var x = jsonLine["genres"];
+                        
+                        foreach (var genre in x)
+                        {
+                            sb.Append($"({book_id}, '{((JProperty)genre).Name}'),");
+                        }
                         //int book_id = (int)jsonLine["book_id"]!;
                         //string title = jsonLine["title"]!.ToString();
                         //title = title.Replace("'", " ");
@@ -116,29 +130,29 @@ internal class Program
                         //name = name.Replace("'", " ");
 
                         //FOR REVIEWS
-                        int book_id = (int)jsonLine["book_id"]!;
-                        int rating = (int)jsonLine["rating"]!;
-                        string user_id = jsonLine["user_id"]!.ToString();
+                        //int book_id = (int)jsonLine["book_id"]!;
+                        //int rating = (int)jsonLine["rating"]!;
+                        //string user_id = jsonLine["user_id"]!.ToString();
 
                         //string values = $"({book_id}, '{title}', {author_id}, '{description}', '{image_url}', {ratings_count})";
-                        string values = $"({book_id}, '{user_id}', {rating})";
+                        //string values = $"({book_id}, '{user_id}', {rating})";
                         counter++;
-                        sb.Append(values + ",");
-                        if (counter % batchSize == 0 || line == null)
-                        {
-                            // Remove the trailing comma
-                            sb.Length--;
+                        //sb.Append(values + ",");
+                        //if (counter % batchSize == 0 || line == null)
+                        //{
+                        //    // Remove the trailing comma
+                        //    sb.Length--;
 
-                            // Execute the batch
-                            command.CommandText = sb.ToString();
-                            command.ExecuteNonQuery();
+                        //    // Execute the batch
+                        //    command.CommandText = sb.ToString();
+                        //    command.ExecuteNonQuery();
 
-                            // Clear the StringBuilder for the next batch
-                            sb.Clear();
-                            sb.AppendLine(@"INSERT INTO Reviews(book_id, user_id, rating) VALUES ");
+                        //    // Clear the StringBuilder for the next batch
+                        //    sb.Clear();
+                        //    sb.AppendLine(@"INSERT INTO Reviews(book_id, user_id, rating) VALUES ");
 
-                            Console.WriteLine($"{counter} rows inserted.");
-                        }
+                        //    Console.WriteLine($"{counter} rows inserted.");
+                        //}
                         //command.CommandText = sb.ToString().Substring(0, sb.ToString().Length - 1);
 
                         //command.ExecuteNonQuery();
@@ -149,8 +163,9 @@ internal class Program
                             Console.WriteLine(counter);
                         }
                     }
+                    command.CommandText = sb.ToString().Substring(0, sb.ToString().Length - 1);
+                    command.ExecuteNonQuery();
 
-                  
 
                 }
             }
