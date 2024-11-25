@@ -6,6 +6,8 @@ using System.Text.Json;
 
 internal class Program
 {
+    // inserimento reviews funziona fino alla sb ma poi dice che non soddisfa il requisito di chiave.
+
     private static void Main(string[] args)
     {
         //Console.WriteLine("Hello, World!");
@@ -16,24 +18,40 @@ internal class Program
             connection.Open();
             SQLiteCommand command = connection.CreateCommand();
 
-            // Create table
-            command.CommandText = @"
-                CREATE TABLE IF NOT EXISTS Books (
-                    book_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title INTEGER,
-                    author_id INTEGER,
-                    description TEXT,
-                    img_url TEXT,
-                    ratings_count INTEGER,
+            // Create table for books
+            //command.CommandText = @"
+            //    CREATE TABLE IF NOT EXISTS Books (
+            //        book_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            //        title INTEGER,
+            //        author_id INTEGER,
+            //        description TEXT,
+            //        img_url TEXT,
+            //        ratings_count INTEGER,
+            //        lcv INTEGER DEFAULT 0
+            //    )
+            //";
+
+
+            //Create table for authors
+            //command.CommandText = @" CREATE TABLE IF NOT EXISTS Authors (
+            //        author_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            //        full_name TEXT,
+            //        lcv INTEGER DEFAULT 0
+            //    )";
+
+            //Create table for reviews
+            command.CommandText = @" CREATE TABLE IF NOT EXISTS Reviews (
+                    review_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    book_id INTEGER,
+                    user_id TEXT,
+                    rating INTEGER,
                     lcv INTEGER DEFAULT 0
-                )
-            ";
+                )";
+            // Insert data
+
             command.ExecuteNonQuery();
 
-            // Insert data
-          
-
-            string filePath = "C:\\Users\\s.prandi\\Downloads\\goodreads_books_romance.json";
+            string filePath = "C:\\Downloads\\reviews.json";
 
             try
             {
@@ -41,15 +59,19 @@ internal class Program
                 {
                     string line;
 
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine(@"
-                        INSERT INTO Books(book_id, title, author_id, description, img_url, ratings_count)
-                        VALUES ");
 
+                    int batchSize = 1000000;
                     int counter = 0;
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine(@"INSERT INTO Reviews(book_id, user_id, rating) VALUES ");
                     while ((line = sr.ReadLine()) != null)
                     {
+                        
+                        //sb.AppendLine(@"
+                        //    INSERT INTO Books(book_id, title, author_id, description, img_url, ratings_count)
+                        //    VALUES ");
 
+                        
                         if (line.StartsWith("["))
                         {
                             line = line.Substring(1);
@@ -64,39 +86,71 @@ internal class Program
                         }
 
                         JObject jsonLine = JObject.Parse(line);
+                        //int book_id = (int)jsonLine["book_id"]!;
+                        //string title = jsonLine["title"]!.ToString();
+                        //title = title.Replace("'", " ");
+                        //var authors = jsonLine["authors"]!;
+                        //if (authors == null || authors.Count() == 0)
+                        //{
+                        //    continue;
+                        //}
+                        //var firstAuthor = authors[0];
+                        //var author_id = (int)firstAuthor["author_id"];
+                        //string description = jsonLine["description"]!.ToString();
+                        //if (string.IsNullOrWhiteSpace(description))
+                        //{
+                        //    continue;
+                        //}
+                        //description = description.Replace("'", " ");
+                        //description = description.Replace("\n", " ");
+                        //string image_url = jsonLine["image_url"]!.ToString();
+                        //int ratings_count = (int)jsonLine["ratings_count"]!;
+                        //if (ratings_count <= 199)
+                        //{
+                        //    continue;
+                        //}
+
+                        //for authors:
+                        //int author_id = (int)jsonLine["author_id"];
+                        //string name = jsonLine["name"]!.ToString();
+                        //name = name.Replace("'", " ");
+
+                        //FOR REVIEWS
                         int book_id = (int)jsonLine["book_id"]!;
-                        string title = jsonLine["title"]!.ToString();
-                        title = title.Replace("'", " ");
-                        var authors = jsonLine["authors"]!;
-                        var firstAuthor = authors[0];
-                        var author_id = (int)firstAuthor["author_id"];
-                        string description = jsonLine["description"]!.ToString();
-                        if (string.IsNullOrWhiteSpace(description))
-                        {
-                            continue;
-                        }
-                        description = description.Replace("'", " ");
-                        description = description.Replace("\n", " ");
-                        string image_url = jsonLine["image_url"]!.ToString();
-                        int ratings_count = (int)jsonLine["ratings_count"]!;
-                        if (ratings_count <= 199)
-                        {
-                            continue;
-                        }
-                        string values = $"({book_id}, '{title}', {author_id}, '{description}', '{image_url}', {ratings_count})";
+                        int rating = (int)jsonLine["rating"]!;
+                        string user_id = jsonLine["user_id"]!.ToString();
 
-                        sb.Append(values + ",");
-
+                        //string values = $"({book_id}, '{title}', {author_id}, '{description}', '{image_url}', {ratings_count})";
+                        string values = $"({book_id}, '{user_id}', {rating})";
                         counter++;
+                        sb.Append(values + ",");
+                        if (counter % batchSize == 0 || line == null)
+                        {
+                            // Remove the trailing comma
+                            sb.Length--;
+
+                            // Execute the batch
+                            command.CommandText = sb.ToString();
+                            command.ExecuteNonQuery();
+
+                            // Clear the StringBuilder for the next batch
+                            sb.Clear();
+                            sb.AppendLine(@"INSERT INTO Reviews(book_id, user_id, rating) VALUES ");
+
+                            Console.WriteLine($"{counter} rows inserted.");
+                        }
+                        //command.CommandText = sb.ToString().Substring(0, sb.ToString().Length - 1);
+
+                        //command.ExecuteNonQuery();
+
+                      
                         if (counter % 1000 == 0)
                         {
                             Console.WriteLine(counter);
                         }
                     }
 
-                    command.CommandText = sb.ToString().Substring(0, sb.ToString().Length - 1);
-
-                    command.ExecuteNonQuery();
+                  
 
                 }
             }
